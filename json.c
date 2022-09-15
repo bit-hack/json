@@ -395,7 +395,7 @@ static void jsonPrintImpl(int i, jsonNodeP n) {
     switch (n->type) {
     case jsonNumber: {
       const int64_t value = jsonValue(n);
-      printf("number (%llu)", value);
+      printf("number (%lld)", value);
       break;
     }
     case jsonString: {
