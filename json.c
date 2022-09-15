@@ -62,10 +62,11 @@ static bool foundStr(jsonParseP j, const char* str) {
   return false;
 }
 
-static bool foundAlpha(jsonParseP j) {
+static bool foundAlphaNum(jsonParseP j) {
   const char ch = *j->p;
   if ((ch >= 'a' && ch <= 'z') ||
       (ch >= 'A' && ch <= 'Z') ||
+      (ch >= '0' && ch <= '9') ||
       (ch == '_')) {
     j->o = (j->p)++;
     return true;
@@ -240,7 +241,7 @@ static bool parseString(jsonParseP j) {
 
   j->top = newNode(j, j->p, jsonString);
 
-  while (foundAlpha(j));
+  while (foundAlphaNum(j));
   DO(found(j, '"'));
   return true;
 }
@@ -344,14 +345,14 @@ bool jsonStrcmp(jsonNodeP node, const char* str) {
   }
 }
 
-int32_t jsonStrlen(jsonNodeP node) {
+uint32_t jsonStrlen(jsonNodeP node) {
   assert(node && "invalid json node");
   assert(node->type == jsonString || node->type == jsonMember);
 
   const char* c = node->src;
   for (; *c; ++c) {
     if (*c == '"') {
-      return (int32_t)(c - node->src);
+      return (uint32_t)(c - node->src);
     }
   }
 
