@@ -3,6 +3,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "json.h"
 
@@ -126,10 +127,14 @@ static bool parseMember(jsonParseP j) {
 
 static bool parseMembers(jsonParseP j) {
 
-  jsonNodeP node = NULL;
+  jsonNodeP first = NULL;
+  jsonNodeP node  = NULL;
 
   do {
     DO(parseMember(j));
+
+    // track the first member
+    if (!first) { first = j->top; }
 
     // insert into chain
     if (node) { node->next = j->top; }
@@ -137,7 +142,7 @@ static bool parseMembers(jsonParseP j) {
 
   } while (found(j, ','));
 
-  j->top = node;
+  j->top = first;
   return true;
 }
 
@@ -219,7 +224,7 @@ static bool parseArray(jsonParseP j) {
 static bool parseNumber(jsonParseP j) {
   const char* p = j->p;
   const char* o = j->o;
-  j->top = newNode(j, j->o, jsonNumber);
+  j->top = newNode(j, j->p, jsonNumber);
 
   while (foundNumeric(j, /*peek*/false));
   if (j->p != p) {
@@ -231,7 +236,8 @@ static bool parseNumber(jsonParseP j) {
 
 static bool parseString(jsonParseP j) {
   assert(*(j->o) == '"');
-  j->top = newNode(j, j->o, jsonString);
+
+  j->top = newNode(j, j->p, jsonString);
 
   while (foundAlpha(j));
   DO(found(j, '"'));
@@ -264,6 +270,8 @@ static bool parseValue(jsonParseP j) {
 }
 
 void jsonDiscard(jsonNodeP node) {
+  assert(node && "invalid json node");
+
   while (node) {
     jsonNodeP next = node->gc;
     free(node);
@@ -272,6 +280,8 @@ void jsonDiscard(jsonNodeP node) {
 }
 
 bool jsonParse(jsonP j, const char* src) {
+  assert(j   && "invalid json object");
+  assert(src && "invalid json source");
 
   memset(j, 0, sizeof(jsonT));
 
@@ -299,5 +309,121 @@ bool jsonParse(jsonP j, const char* src) {
 }
 
 void jsonFree(jsonP json) {
+  assert(json && "invalid json object");
+
   jsonDiscard(json->gc);
+}
+
+int64_t jsonValue(jsonNodeP node) {
+  assert(node->type == jsonNumber);
+
+  int64_t val = 0;
+  const char* c = node->src;
+  for (; *c >= '0' && *c <= '9'; ++c) {
+    val *= 10;
+    val += (int64_t)*c - '0';
+  }
+  return val;
+}
+
+bool jsonStrcmp(jsonNodeP node, const char* str) {
+  assert(node->type == jsonString || node->type == jsonMember);
+
+  const char* c = node->src;
+  for (;; ++str, ++c) {
+    if (*str == '\0') {
+      return true;
+    }
+    if (*c == '"') {
+      return false;
+    }
+    if (*str != *c) {
+      return false;
+    }
+  }
+}
+
+int32_t jsonStrlen(jsonNodeP node) {
+  assert(node && "invalid json node");
+  assert(node->type == jsonString || node->type == jsonMember);
+
+  const char* c = node->src;
+  for (; *c; ++c) {
+    if (*c == '"') {
+      return (int32_t)(c - node->src);
+    }
+  }
+
+  return /*error*/0;
+}
+
+bool jsonAsBool(jsonNodeP node) {
+  assert(node && "invalid json node");
+
+  if (node->type == jsonTrue) {
+    return true;
+  }
+  if (node->type == jsonFalse) {
+    return false;
+  }
+
+  assert(!"incompatible json type");
+  return false;
+}
+
+jsonNodeP jsonFindMember(jsonNodeP node, const char* name) {
+  assert(node->type == jsonObject);
+
+  jsonNodeP c = node->child;
+  for (; c; c = c->next) {
+    assert(c->type == jsonMember);
+    if (jsonStrcmp(c, name)) {
+      return c;
+    }
+  }
+
+  return NULL;
+}
+
+static void jsonPrintImpl(int i, jsonNodeP n) {
+  while (n) {
+    // indent
+    for (int j = 0; j < i; ++j) { printf("  "); }
+    // node name
+    switch (n->type) {
+    case jsonNumber: {
+      const int64_t value = jsonValue(n);
+      printf("number (%llu)", value);
+      break;
+    }
+    case jsonString: {
+      uint32_t len = jsonStrlen(n);
+      printf("string ('%.*s', len=%u)", len, n->src, len);
+      break;
+    }
+    case jsonMember: {
+      uint32_t len = jsonStrlen(n);
+      printf("member ('%.*s', len=%u)", len, n->src, len);
+      break;
+    }
+    case jsonTrue:   printf("true");   break;
+    case jsonFalse:  printf("false");  break;
+    case jsonNull:   printf("null");   break;
+    case jsonObject: printf("object"); break;
+    case jsonArray:  printf("array");  break;
+    }
+    // new line
+    printf("\n");
+    // discover children
+    if (n->child) {
+      jsonPrintImpl(i + 1, n->child);
+    }
+    // discover sibblings
+    n = n->next;
+  }
+}
+
+void jsonPrint(jsonNodeP node) {
+  assert(node && "invalid json node");
+  jsonPrintImpl(0, node);
 }

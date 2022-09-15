@@ -1,72 +1,85 @@
 #include <stdio.h>
+#include <assert.h>
 
 #include "json.h"
 
-const char* tests[] = {
-  "true",
-  "false",
-  "null",
-  "123456",
-  "\"HelloWorld\"",
-  "[ 1 ]",
-  "[ 1, 2 ]",
-  "[ 1, 2, 3 ]",
-  "[ 1, 2, 3, 4 ]",
-  "{ \"test\" : 1 }",
-  "[ [ 1 ], [ 2 ] ]",
-  "{ \"x\" : { \"y\" : 2 } }",
-  "[ true, false, null ]",
-  "[ \"Hi\" ]",
-  NULL
-};
 
-void walk(int i, jsonNodeP n) {
-
-  while (n) {
-
-    // indent
-    for (int j = 0; j < i; ++j) { printf("  "); }
-
-    // name
-    switch (n->type) {
-    case jsonTrue:   printf("true");   break;
-    case jsonFalse:  printf("false");  break;
-    case jsonNull:   printf("null");   break;
-    case jsonString: printf("string"); break;
-    case jsonNumber: printf("number"); break;
-    case jsonObject: printf("object"); break;
-    case jsonMember: printf("member"); break;
-    case jsonArray:  printf("array");  break;
-    }
-
-    printf("\n");
-
-    // discover children
-    if (n->child) {
-      walk(i + 1, n->child);
-    }
-
-    // discover sibblings
-    n = n->next;
-  }
+void border() {
+  printf("----------------------------------------------------\n");
 }
 
-int main(int argc, char** args) {
+
+bool test1() {
+
+  static const char* tests[] = {
+    "true",
+    "false",
+    "null",
+    "123456",
+    "\"HelloWorld\"",
+    "[ 1 ]",
+    "[ 1, 2 ]",
+    "[ 1, 2, 3 ]",
+    "[ 1, 2, 3, 4 ]",
+    "{ \"test\" : 1 }",
+    "[ [ 1 ], [ 2 ] ]",
+    "{ \"x\" : { \"y\" : 2 } }",
+    "[ true, false, null ]",
+    "[ \"Hi\" ]",
+    NULL
+  };
 
   for (uint32_t i = 0; tests[i]; ++i) {
     const char* test = tests[i];
 
+    border();
+    printf("// '%s'\n", test);
+
     jsonT j = { 0 };
     bool ok = jsonParse(&j, test);
-
     if (ok) {
-      walk(0, j.root);
+      jsonPrint(j.root);
     }
+
+    printf("%s\n", ok ? "PASS" : "FAIL");
 
     jsonFree(&j);
 
-    printf("%c - %s\n", ok ? 'P' : 'F', test);
   }
+
+  return true;
+}
+
+bool test2() {
+
+  border();
+
+  static const char* test = "{ \"Hi\" : 1234, \"Xero\" : 96, \"Park\" : 6274 }";
+
+  jsonT j = { 0 };
+  if (!jsonParse(&j, test)) {
+    return;
+  }
+  jsonPrint(j.root);
+
+  jsonNodeP a = jsonFindMember(j.root, "Hi");
+  jsonNodeP b = jsonFindMember(j.root, "Xero");
+  jsonNodeP c = jsonFindMember(j.root, "Park");
+
+  assert(a->type == jsonMember);
+  assert(jsonValue(a->child) == 1234);
+
+  assert(b->type == jsonMember);
+  assert(jsonValue(b->child) == 96);
+
+  assert(c->type == jsonMember);
+  assert(jsonValue(c->child) == 6274);
+}
+
+int main(int argc, char** args) {
+
+  test1();
+  test2();
 
   return 0;
 }
