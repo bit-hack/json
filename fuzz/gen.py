@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!python
 
 import sys
 
@@ -22,9 +22,6 @@ def random(maximum):
 def choose(*args):
     return args[random(len(args))]
 
-def chance(percent):
-    return random(100) < percent
-
 def rand_range(lo, hi):
     return lo + random(hi-lo)
 
@@ -35,9 +32,6 @@ def rand_name():
     for _ in range(0, size):
         out += alpha_num[random(len(alpha_num))]
     return out
-
-def rand_type():
-    return choose('int', 'char')
 
 # ----------------------------------------------------------------------------
 
@@ -124,5 +118,4 @@ def main():
 
 if __name__ == '__main__':
     _seed = int(sys.argv[1]) if len(sys.argv) > 1 else 12341
-    # emitln('/* seed={} */'.format(_seed))
     main()

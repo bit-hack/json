@@ -1,10 +1,8 @@
 #!/bin/bash
 
-rm -rf fuzz*.c
-
-for i in {2000..4000}
+for i in {4000..6000}
 do
-    python gen.py $i > "test.json"
+    ./gen.py $i > "test.json"
     ../build/Debug/json.exe test.json
     code=$?
     if [[ $code -ne 0 ]]; then
