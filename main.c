@@ -8,7 +8,6 @@ void border() {
   printf("----------------------------------------------------\n");
 }
 
-
 bool test1() {
 
   static const char* tests[] = {
@@ -26,6 +25,9 @@ bool test1() {
     "{ \"x\" : { \"y\" : 2 } }",
     "[ true, false, null ]",
     "[ \"Hi\" ]",
+    "[]",
+    "{}",
+    "\"\"",
     NULL
   };
 

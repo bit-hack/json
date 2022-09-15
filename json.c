@@ -216,8 +216,9 @@ static bool parseArray(jsonParseP j) {
     j->top = node;
 
     DO(found(j, ']'));
-    return true;
   }
+
+  j->top = node;
   return true;
 }
 
