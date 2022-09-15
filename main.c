@@ -39,7 +39,6 @@ void walk(int i, jsonNodeP n) {
     case jsonArray:  printf("array");  break;
     }
 
-    printf("  // %8s", n->src);
     printf("\n");
 
     // discover children

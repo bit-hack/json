@@ -24,7 +24,6 @@ typedef struct jsonParseS {
 static bool parseElement (jsonParseP j);
 static bool parseElements(jsonParseP j);
 static bool parseValue   (jsonParseP j);
-static bool parseNumber  (jsonParseP j);
 static bool parseString  (jsonParseP j);
 
 static jsonNodeP newNode(jsonParseP j, const char* src, enum jsonType type) {
