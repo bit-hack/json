@@ -35,8 +35,23 @@ def rand_name():
 
 # ----------------------------------------------------------------------------
 
+output = ""
+
 def emit(s):
-    sys.stdout.write(s)
+    global output
+    output += s
+
+def emit_to_stdout():
+    global output
+    sys.stdout.write(output)
+
+def insert_errors():
+    global output
+    n = rand_range(1, 10)
+    for i in range(n):
+        s = random(len(output))
+        d = random(len(output))
+        output = output[:d] + output[s] + output[d+1:]
 
 # ----------------------------------------------------------------------------
 
@@ -93,7 +108,7 @@ def gen_string():
     emit('"{}"'.format(name))
 
 def gen_number():
-    val = random(1000)
+    val = random(2000) - 1000
     emit(str(val))
 
 def gen_true():
@@ -115,6 +130,9 @@ def gen_value():
 
 def main():
     gen_element()
+    if True:
+        insert_errors()
+    emit_to_stdout()
 
 if __name__ == '__main__':
     _seed = int(sys.argv[1]) if len(sys.argv) > 1 else 12341

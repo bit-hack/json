@@ -13,8 +13,7 @@ enum jsonType {
   jsonNumber
 };
 
-typedef struct jsonS jsonT, *jsonP;
-
+typedef struct jsonS     jsonT,     *jsonP;
 typedef struct jsonNodeS jsonNodeT, *jsonNodeP;
 
 struct jsonS {
@@ -35,11 +34,13 @@ struct jsonNodeS {
 
 };
 
-bool      jsonParse     (jsonP json, const char *src);
-void      jsonFree      (jsonP json);
+bool      jsonParse(jsonP json, const char *src);
+void      jsonFree (jsonP json);
+
 int64_t   jsonValue     (jsonNodeP node);
 bool      jsonStrcmp    (jsonNodeP node, const char *str);
 uint32_t  jsonStrlen    (jsonNodeP node);
 bool      jsonAsBool    (jsonNodeP node);
 jsonNodeP jsonFindMember(jsonNodeP node, const char *name);
 void      jsonPrint     (jsonNodeP node);
+void      jsonValidate  (jsonNodeP node);

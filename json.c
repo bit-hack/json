@@ -74,9 +74,9 @@ static bool foundAlphaNum(jsonParseP j) {
   return false;
 }
 
-static bool foundNumeric(jsonParseP j, bool peek) {
+static bool foundNumeric(jsonParseP j, bool peek, bool minus) {
   const char ch = *j->p;
-  if (ch >= '0' && ch <= '9') {
+  if (ch >= '0' && ch <= '9' || (minus && ch == '-')) {
     if (!peek) {
       j->o = j->p++;
     }
@@ -228,10 +228,17 @@ static bool parseNumber(jsonParseP j) {
   const char* o = j->o;
   j->top = newNode(j, j->p, jsonNumber);
 
-  while (foundNumeric(j, /*peek*/false));
+  // consume any unary minus
+  found(j, '-');
+
+  while (foundNumeric(j, /*peek*/false, /*minus*/false));
+
+  // ensure we parsed something
   if (j->p != p) {
     return true;
   }
+
+  // failure
   j->o = o;
   return false;
 }
@@ -256,7 +263,7 @@ static bool parseValue(jsonParseP j) {
   if (found(j, '"')) {
     return parseString(j);
   }
-  if (foundNumeric(j, /*peek*/true)) {
+  if (foundNumeric(j, /*peek*/true, /*minus*/true)) {
     return parseNumber(j);
   }
   if (foundStr(j, "true")) {
@@ -268,12 +275,11 @@ static bool parseValue(jsonParseP j) {
   if (foundStr(j, "null")) {
     return parseNull(j);
   }
-  return true;
+  // nothing valid found
+  return false;
 }
 
-void jsonDiscard(jsonNodeP node) {
-  assert(node && "invalid json node");
-
+static void jsonDiscard(jsonNodeP node) {
   while (node) {
     jsonNodeP next = node->gc;
     free(node);
@@ -313,19 +319,25 @@ bool jsonParse(jsonP j, const char* src) {
 void jsonFree(jsonP json) {
   assert(json && "invalid json object");
 
-  jsonDiscard(json->gc);
+  if (json->gc) {
+    jsonDiscard(json->gc);
+  }
 }
 
 int64_t jsonValue(jsonNodeP node) {
   assert(node->type == jsonNumber);
+  const char* c = node->src;
+
+  const bool minus = (*c == '-');
+  c += minus ? 1 : 0;
 
   int64_t val = 0;
-  const char* c = node->src;
   for (; *c >= '0' && *c <= '9'; ++c) {
     val *= 10;
     val += (int64_t)*c - '0';
   }
-  return val;
+
+  return minus ? -val : val;
 }
 
 bool jsonStrcmp(jsonNodeP node, const char* str) {
@@ -333,15 +345,9 @@ bool jsonStrcmp(jsonNodeP node, const char* str) {
 
   const char* c = node->src;
   for (;; ++str, ++c) {
-    if (*str == '\0') {
-      return true;
-    }
-    if (*c == '"') {
-      return false;
-    }
-    if (*str != *c) {
-      return false;
-    }
+    if (*str == '\0') { return true;  }
+    if (*c == '"')    { return false; }
+    if (*str != *c)   { return false; }
   }
 }
 
@@ -385,6 +391,31 @@ jsonNodeP jsonFindMember(jsonNodeP node, const char* name) {
   }
 
   return NULL;
+}
+
+void jsonValidate(jsonNodeP n) {
+  while (n) {
+    assert(n->src);
+
+    switch (n->type) {
+    case jsonMember:
+    case jsonObject:
+    case jsonArray:
+      break;
+    case jsonString:
+    case jsonNumber:
+    case jsonTrue:
+    case jsonFalse:
+    case jsonNull:
+      assert(n->child == NULL);
+    }
+
+    if (n->child) {
+      jsonValidate(n->child);
+    }
+
+    n = n->next;
+  }
 }
 
 static void jsonPrintImpl(int i, jsonNodeP n) {

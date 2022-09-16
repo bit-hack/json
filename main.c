@@ -42,6 +42,7 @@ int main(int argc, char** args) {
   // print the parse json
   if (json.root) {
     jsonPrint(json.root);
+    jsonValidate(json.root);
   }
 
   // release the json file
