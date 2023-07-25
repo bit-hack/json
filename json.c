@@ -8,17 +8,19 @@
 #include "json.h"
 
 
-#define DO(EXPR) \
-  if (!(EXPR)) {  \
-    return false; \
+#define DO(EXPR, PARSER, MSG)  \
+  if (!(EXPR)) {       \
+    error(PARSER, MSG);        \
+    return false;      \
   }
 
 typedef struct jsonParseS {
 
-  jsonNodeP   top;  // work space
-  const char* o;    // old parse pointer
-  const char* p;    // parse pointer
-  jsonNodeP   gc;   // garbage collection chain
+  jsonNodeP   top;    // work space
+  const char* start;  // start point of json
+  const char* o;      // old parse pointer
+  const char* p;      // parse pointer
+  jsonNodeP   gc;     // garbage collection chain
 
 } jsonParseT, *jsonParseP;
 
@@ -26,6 +28,20 @@ static bool parseElement (jsonParseP j);
 static bool parseElements(jsonParseP j);
 static bool parseValue   (jsonParseP j);
 static bool parseString  (jsonParseP j);
+
+static void error(jsonParseP j, const char* msg) {
+  const char* x = j->start;
+
+  uint32_t line = 0;
+  uint32_t col  = 0;
+
+  for (; x < j->o; ++x) {
+    col   = (*x == '\n') ? 0 : col + 1;
+    line += (*x == '\n') ? 1 : 0;
+  }
+
+  fprintf(stderr, "line:%u:%u %s\n", line, col, msg);
+}
 
 static jsonNodeP newNode(jsonParseP j, const char* src, enum jsonType type) {
   jsonNodeP obj = calloc(1, sizeof(jsonNodeT));
@@ -40,7 +56,7 @@ static jsonNodeP newNode(jsonParseP j, const char* src, enum jsonType type) {
 
 static bool found(jsonParseP j, char ch) {
   if (*j->p == ch) {
-    j->o = j->p++;
+    j->o = (j->p)++;
     return true;
   }
   return false;
@@ -78,7 +94,7 @@ static bool foundNumeric(jsonParseP j, bool peek, bool minus) {
   const char ch = *j->p;
   if (ch >= '0' && ch <= '9' || (minus && ch == '-')) {
     if (!peek) {
-      j->o = j->p++;
+      j->o = (j->p)++;
     }
     return true;
   }
@@ -102,25 +118,25 @@ static bool parseWs(jsonParseP j) {
 }
 
 static bool parseElement(jsonParseP j) {
-  DO(parseWs(j));
-  DO(parseValue(j));
-  DO(parseWs(j));
+  DO(parseWs(j),    j, "Whitespace expected");
+  DO(parseValue(j), j, "Value expected");
+  DO(parseWs(j),    j, "Whitespace expected");
   return true;
 }
 
 static bool parseMember(jsonParseP j) {
-  DO(parseWs(j));
-  DO(found(j, '"'));
+  DO(parseWs(j),       j, "Whitespace expected");
+  DO(found(j, '"'), j, "'\"' expected");
 
-  DO(parseString(j));       // key
+  DO(parseString(j), j, "String expected"); // key
   assert(j->top);
   jsonNodeP node = j->top;
   node->type = jsonMember;
 
-  DO(parseWs(j));
-  DO(found(j, ':'));
+  DO(parseWs(j),       j, "Whitespace expected");
+  DO(found(j, ':'), j, "':' expected");
 
-  DO(parseElement(j));      // value
+  DO(parseElement(j),  j, "Element expected"); // value
   node->child = j->top;
   j->top = node;
   return true;
@@ -132,7 +148,7 @@ static bool parseMembers(jsonParseP j) {
   jsonNodeP node  = NULL;
 
   do {
-    DO(parseMember(j));
+    DO(parseMember(j), j, "Member expected");
 
     // track the first member
     if (!first) { first = j->top; }
@@ -153,7 +169,7 @@ static bool parseElements(jsonParseP j) {
   jsonNodeP first = NULL;
 
   do {
-    DO(parseElement(j));
+    DO(parseElement(j), j, "Element expected");
 
     // track the first element
     if (!first) { first = j->top; };
@@ -188,15 +204,15 @@ static bool parseObject(jsonParseP j) {
   jsonNodeP node = newNode(j, j->o, jsonObject);
 
   assert(*(j->o) == '{');
-  DO(parseWs(j));
+  DO(parseWs(j), j, "Whitespace expected");
 
   if (!found(j, '}')) {
 
-    DO(parseMembers(j));
+    DO(parseMembers(j), j, "Members expected");
     node->child = j->top;
     j->top = node;
 
-    DO(found(j, '}'));
+    DO(found(j, '}'), j, "'}' expected");
     return true;
   }
 
@@ -209,14 +225,14 @@ static bool parseArray(jsonParseP j) {
 
   jsonNodeP node = newNode(j, j->o, jsonArray);
 
-  DO(parseWs(j));
+  DO(parseWs(j), j, "Whitespace expected");
   if (!found(j, ']')) {
-    DO(parseElements(j));
+    DO(parseElements(j), j, "Elements expected");
 
     node->child = j->top;
     j->top = node;
 
-    DO(found(j, ']'));
+    DO(found(j, ']'), j, "']' expected");
   }
 
   j->top = node;
@@ -233,6 +249,11 @@ static bool parseNumber(jsonParseP j) {
 
   while (foundNumeric(j, /*peek*/false, /*minus*/false));
 
+  // parse optional fractional part
+  if (found(j, '.')) {
+    while (foundNumeric(j, /*peek*/false, /*minus*/false));
+  }
+
   // ensure we parsed something
   if (j->p != p) {
     return true;
@@ -240,6 +261,7 @@ static bool parseNumber(jsonParseP j) {
 
   // failure
   j->o = o;
+  error(j, "Error parsing number");
   return false;
 }
 
@@ -249,7 +271,7 @@ static bool parseString(jsonParseP j) {
   j->top = newNode(j, j->p, jsonString);
 
   while (foundAlphaNum(j));
-  DO(found(j, '"'));
+  DO(found(j, '"'), j, "'\"' expected");
   return true;
 }
 
@@ -276,6 +298,7 @@ static bool parseValue(jsonParseP j) {
     return parseNull(j);
   }
   // nothing valid found
+  error(j, "unexpected token");
   return false;
 }
 
@@ -294,10 +317,11 @@ bool jsonParse(jsonP j, const char* src) {
   memset(j, 0, sizeof(jsonT));
 
   jsonParseT parse = {
-    .p   = src,
-    .o   = src,
-    .top = NULL,
-    .gc  = NULL,
+    .start = src,
+    .p     = src,
+    .o     = src,
+    .top   = NULL,
+    .gc    = NULL,
   };
   if (!parseJson(&parse)) {
     jsonDiscard(parse.gc);
@@ -324,7 +348,7 @@ void jsonFree(jsonP json) {
   }
 }
 
-int64_t jsonValue(jsonNodeP node) {
+int64_t jsonValueI(jsonNodeP node) {
   assert(node->type == jsonNumber);
   const char* c = node->src;
 
@@ -338,6 +362,32 @@ int64_t jsonValue(jsonNodeP node) {
   }
 
   return minus ? -val : val;
+}
+
+double jsonValueD(jsonNodeP node) {
+  assert(node->type == jsonNumber);
+  const char* c = node->src;
+
+  const bool minus = (*c == '-');
+  c += minus ? 1 : 0;
+
+  int64_t val   = 0;
+  int64_t fract = 0;
+
+  for (; *c >= '0' && *c <= '9' || *c == '.'; ++c) {
+    if (*c == '.') {
+      fract = 1;
+    }
+    else {
+      fract *= 10;
+      val   *= 10;
+      val   += (int64_t)*c - '0';
+    }
+  }
+
+  const double denom = fract ? (double)fract : 1.0;
+
+  return (double)(minus ? -val : val) / denom;
 }
 
 bool jsonStrcmp(jsonNodeP node, const char* str) {
@@ -425,8 +475,8 @@ static void jsonPrintImpl(int i, jsonNodeP n) {
     // node name
     switch (n->type) {
     case jsonNumber: {
-      const int64_t value = jsonValue(n);
-      printf("number (%lld)", value);
+      const double value = jsonValueD(n);
+      printf("number (%f)", value);
       break;
     }
     case jsonString: {

@@ -21,7 +21,6 @@ struct jsonS {
   jsonNodeP   root;     // root node
   const char *src;      // json source
   jsonNodeP   gc;       // garbage collection chain
-
 };
 
 struct jsonNodeS {
@@ -31,13 +30,13 @@ struct jsonNodeS {
   jsonNodeP     child;  // child node
   enum jsonType type;   // node type
   jsonNodeP     gc;     // garbage collection chain
-
 };
 
 bool      jsonParse(jsonP json, const char *src);
 void      jsonFree (jsonP json);
 
-int64_t   jsonValue     (jsonNodeP node);
+int64_t   jsonValueI    (jsonNodeP node);
+double    jsonValueD    (jsonNodeP node);
 bool      jsonStrcmp    (jsonNodeP node, const char *str);
 uint32_t  jsonStrlen    (jsonNodeP node);
 bool      jsonAsBool    (jsonNodeP node);
