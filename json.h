@@ -32,10 +32,9 @@ struct jsonNodeS {
   jsonNodeP     gc;     // garbage collection chain
 };
 
-bool      jsonParse(jsonP json, const char *src);
-void      jsonFree (jsonP json);
-jsonNodeP jsonRoot (jsonP json);
-
+bool      jsonParse     (jsonP json, const char *src);
+void      jsonFree      (jsonP json);
+jsonNodeP jsonRoot      (jsonP json);
 int64_t   jsonValueI    (jsonNodeP node);
 double    jsonValueD    (jsonNodeP node);
 bool      jsonStrcmp    (jsonNodeP node, const char *str);
@@ -44,3 +43,5 @@ bool      jsonAsBool    (jsonNodeP node);
 jsonNodeP jsonFindMember(jsonNodeP node, const char *name);
 void      jsonPrint     (jsonNodeP node);
 void      jsonValidate  (jsonNodeP node);
+jsonNodeP jsonNext      (jsonNodeP node);
+jsonNodeP jsonChild     (jsonNodeP node);

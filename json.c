@@ -500,12 +500,15 @@ static void jsonPrintImpl(int i, jsonNodeP n) {
     // new line
     printf("\n");
     // discover children
-    if (n->child) {
-      jsonPrintImpl(i + 1, n->child);
-    }
+    jsonPrintImpl(i + 1, jsonChild(n));
     // discover sibblings
-    n = n->next;
+    n = jsonNext(n);
   }
+}
+
+jsonNodeP jsonRoot(jsonP json) {
+  assert(json && "invalid json");
+  return json->root;
 }
 
 void jsonPrint(jsonNodeP node) {
@@ -513,7 +516,12 @@ void jsonPrint(jsonNodeP node) {
   jsonPrintImpl(0, node);
 }
 
-jsonNodeP jsonRoot(jsonP json) {
-  assert(json && "invalid json object");
-  return json->root;
+jsonNodeP jsonNext(jsonNodeP node) {
+  assert(node && "invalid json node");
+  return node->next;
+}
+
+jsonNodeP jsonChild(jsonNodeP node) {
+  assert(node && "invalid json node");
+  return node->child;
 }
