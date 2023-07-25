@@ -54,9 +54,13 @@ static jsonNodeP newNode(jsonParseP j, const char* src, enum jsonType type) {
   return obj;
 }
 
+static void inline advance(jsonParseP j) {
+  j->o = (j->p)++;
+}
+
 static bool found(jsonParseP j, char ch) {
   if (*j->p == ch) {
-    j->o = (j->p)++;
+    advance(j);
     return true;
   }
   return false;
@@ -80,11 +84,10 @@ static bool foundStr(jsonParseP j, const char* str) {
 
 static bool foundAlphaNum(jsonParseP j) {
   const char ch = *j->p;
-  if ((ch >= 'a' && ch <= 'z') ||
-      (ch >= 'A' && ch <= 'Z') ||
-      (ch >= '0' && ch <= '9') ||
-      (ch == '_')) {
-    j->o = (j->p)++;
+  // all printable ascii chars except quote
+  // todo: escape chars
+  if ((ch >= ' ' && ch <= '~') && ch != '"') {
+    advance(j);
     return true;
   }
   return false;
@@ -94,7 +97,7 @@ static bool foundNumeric(jsonParseP j, bool peek, bool minus) {
   const char ch = *j->p;
   if (ch >= '0' && ch <= '9' || (minus && ch == '-')) {
     if (!peek) {
-      j->o = (j->p)++;
+      advance(j);
     }
     return true;
   }
@@ -262,7 +265,7 @@ static bool parseNumber(jsonParseP j) {
   // failure
   j->o = o;
   error(j, "Error parsing number");
-  return false;
+  return /*error*/false;
 }
 
 static bool parseString(jsonParseP j) {
@@ -299,7 +302,7 @@ static bool parseValue(jsonParseP j) {
   }
   // nothing valid found
   error(j, "unexpected token");
-  return false;
+  return /*error*/false;
 }
 
 static void jsonDiscard(jsonNodeP node) {
@@ -325,13 +328,13 @@ bool jsonParse(jsonP j, const char* src) {
   };
   if (!parseJson(&parse)) {
     jsonDiscard(parse.gc);
-    return false;
+    return /*error*/false;
   }
 
   parseWs(&parse);
   if (!found(&parse, '\0')) {
     jsonDiscard(parse.gc);
-    return false;
+    return /*error*/false;
   }
 
   j->src = src;
@@ -386,7 +389,6 @@ double jsonValueD(jsonNodeP node) {
   }
 
   const double denom = fract ? (double)fract : 1.0;
-
   return (double)(minus ? -val : val) / denom;
 }
 
@@ -426,7 +428,7 @@ bool jsonAsBool(jsonNodeP node) {
   }
 
   assert(!"incompatible json type");
-  return false;
+  return /*error*/false;
 }
 
 jsonNodeP jsonFindMember(jsonNodeP node, const char* name) {
@@ -509,4 +511,9 @@ static void jsonPrintImpl(int i, jsonNodeP n) {
 void jsonPrint(jsonNodeP node) {
   assert(node && "invalid json node");
   jsonPrintImpl(0, node);
+}
+
+jsonNodeP jsonRoot(jsonP json) {
+  assert(json && "invalid json object");
+  return json->root;
 }

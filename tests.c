@@ -4,10 +4,12 @@
 static const char* xfails[] = {
   "[", "]", "[[ ]",
   ".0", "0..0", "--1", "0.0.", ".0.0", "- 1", "0. 0", "0 .0",
+  // extended ascii characters
+  "\"£\"", "\"¬\"",
   NULL
 };
 
-bool expectNumber(const char* str, double value) {
+static bool expectNumber(const char* str, double value) {
   jsonT j = { 0 };
   if (!jsonParse(&j, str)) {
     fprintf(stderr, "failed to parse %s\n", str);
@@ -21,7 +23,7 @@ bool expectNumber(const char* str, double value) {
   return true;
 }
 
-void checkNumbers() {
+void checkNumbers(void) {
 
   struct pair {
     const char* str;
@@ -61,6 +63,39 @@ void checkNumbers() {
   }
 }
 
+static void checkString(void) {
+
+  const char* tests[] = {
+    "\"Hello World!\"",
+    "\"0123456789\"",
+    "\"abcdefghijklmnopqrstuvwxyz\"",
+    "\"ABCDEFGHIJKLMNOPQRSTUVWXYZ\"",
+    "\"!$%^&*()_+-=<>,./?'@#~[]{}`\"",
+    NULL
+  };
+
+  for (uint32_t i = 0; ; ++i) {
+
+    const char* t = tests[i];
+    if (!t) {
+      break;
+    }
+
+    jsonT j = { 0 };
+    if (!jsonParse(&j, t)) {
+      fprintf(stderr, "jsonParse error for %s\n", t);
+      continue;
+    }
+
+    jsonNodeP n = jsonRoot(&j);
+    if (jsonStrcmp(n, t) != 0) {
+      fprintf(stderr, "value error expecting %s\n", t);
+    }
+
+    jsonFree(&j);
+  }
+}
+
 int main(int argc, char** args) {
 
   const char** xf = xfails;
@@ -72,6 +107,7 @@ int main(int argc, char** args) {
   }
 
   checkNumbers();
+  checkString();
 
   return 0;
 }

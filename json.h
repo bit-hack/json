@@ -34,6 +34,7 @@ struct jsonNodeS {
 
 bool      jsonParse(jsonP json, const char *src);
 void      jsonFree (jsonP json);
+jsonNodeP jsonRoot (jsonP json);
 
 int64_t   jsonValueI    (jsonNodeP node);
 double    jsonValueD    (jsonNodeP node);
