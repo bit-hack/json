@@ -130,7 +130,7 @@ def gen_value():
 
 def main():
     gen_element()
-    if True:
+    if False:
         insert_errors()
     emit_to_stdout()
 
